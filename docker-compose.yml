@@ -96,7 +96,17 @@ services:
         target: /etc/timezone
         read_only: true
 
-    networks: ['nextcloud-net']
+      - type: bind
+        source: ./ssl
+        target:  /var/lib/postgresql/ssl
+        read_only: true
+
+      - type: bind
+        source: ./config/postgres
+        target:  /docker-entrypoint-initdb.d/
+        read_only: true
+        
+    networks:   ['nextcloud-net']
     restart: unless-stopped
 
   # REDIS - cache
