@@ -1,0 +1,133 @@
+
+general: {
+	configs_folder = "@confdir@"			# Configuration files folder
+	#plugins_folder = "@plugindir@"			# Plugins folder
+	#transports_folder = "@transportdir@"	# Transports folder
+	#events_folder = "@eventdir@"			# Event handlers folder
+	#loggers_folder = "@loggerdir@"			# External loggers folder
+	#log_to_stdout = false					# Whether the Janus output should be written
+	#log_to_file = "/path/to/janus.log"		# Whether to use a log file or not
+	#log_rotate_sig = "SIGUSR1"				# Signal to handle for log rotation, valid values
+	debug_level = 4							# Debug/logging level, valid values are 0-7
+	#debug_timestamps = true				# Whether to show a timestamp for each log line
+	#debug_colors = false					# Whether colors should be disabled in the log
+	#debug_locks = true						# Whether to enable debugging of locks (very verbose!)
+	#log_prefix = "[janus] "				# In case you want log lines to be prefixed by some
+	#daemonize = true						# Whether Janus should run as a daemon
+	#pid_file = "/path/to/janus.pid"		# PID file to create when Janus has been
+	#api_secret = "janusrocks"		# String that all Janus requests must contain
+	#token_auth = true				# Enable a token based authentication
+	#token_auth_secret = "janus"	# Use HMAC-SHA1 signed tokens (with token_auth). Note that
+	admin_secret = "janusoverlord"	# String that all Janus requests must contain
+	#interface = "1.2.3.4"			# Interface to use (will be used in SDP)
+	#server_name = "MyJanusInstance"# Public name of this Janus instance
+	#session_timeout = 60			# How long (in seconds) we should wait before
+	#candidates_timeout = 45		# How long (in seconds) we should keep hold of
+	#reclaim_session_timeout = 0	# How long (in seconds) we should wait for a
+	#recordings_tmp_ext = "tmp"		# The extension for recordings, in Janus, is
+	#event_loops = 8				# By default, Janus handles each have their own
+	#allow_loop_indication = true	# In case a static number of event loops is
+	#task_pool_size = 100			# By default, while the Janus core is single thread
+	#opaqueid_in_api = true			# Opaque IDs set by applications are typically
+	#hide_dependencies = true		# By default, a call to the "info" endpoint of
+	#exit_on_dl_error = false		# If a Janus shared libary cannot be loaded or an expected
+	#no_webrtc_encryption = true
+	protected_folders = [
+		"/bin",
+		"/boot",
+		"/dev",
+		"/etc",
+		"/initrd",
+		"/lib",
+		"/lib32",
+		"/lib64",
+		"/proc",
+		"/sbin",
+		"/sys",
+		"/usr",
+		"/var",
+			# We add what are usually the folders Janus is installed to
+			# as well: we don't just put "/opt/janus" because that would
+			# include folders like "/opt/janus/share" that is where
+			# recordings might be saved to by some plugins
+		"/opt/janus/bin",
+		"/opt/janus/etc",
+		"/opt/janus/include",
+		"/opt/janus/lib",
+		"/opt/janus/lib32",
+		"/opt/janus/lib64",
+		"/opt/janus/sbin"
+	]
+}
+
+certificates: {
+	#cert_pem = "/path/to/certificate.pem"
+	#cert_key = "/path/to/key.pem"
+	#cert_pwd = "secretpassphrase"
+	#dtls_accept_selfsigned = false
+	#dtls_ciphers = "your-desired-openssl-ciphers"
+	#rsa_private_key = false
+}
+
+media: {
+	#ipv6 = true
+	#ipv6_linklocal = true
+	#min_nack_queue = 500
+	#rtp_port_range = "20000-40000"
+	#dtls_mtu = 1200
+	#no_media_timer = 1
+	#slowlink_threshold = 4
+	#twcc_period = 100
+	#dtls_timeout = 500
+	#nack_optimizations = true
+	#dscp = 46
+}
+
+nat: {
+	#stun_server = "stun.voip.eutelia.it"
+	#stun_port = 3478
+	#nice_debug = "nice_debug option is NOT SUPPORTED ANYMORE! Please set NICE_DEBUG and G_MESSAGES_DEBUG env vars when starting Janus"
+	full_trickle = true # set this
+	#ice_nomination = "regular"
+	#ice_consent_freshness = true
+	#ice_keepalive_conncheck = true
+	#ice_lite = true
+	#ice_tcp = true
+	#hangup_on_failed = true
+	#ignore_mdns = true
+	#nat_1_1_mapping = "1.2.3.4"
+	#keep_private_host = true
+	#turn_server = "myturnserver.com"
+	#turn_port = 3478
+	#turn_type = "udp"
+	#turn_user = "myuser"
+	#turn_pwd = "mypassword"
+	#turn_rest_api = "http://yourbackend.com/path/to/api"
+	turn_rest_api_key = "a51745a31e5718372827851d78e53686" # schange me
+	#turn_rest_api_method = "GET"
+	#turn_rest_api_timeout = 10
+	#allow_force_relay = true
+	#ice_enforce_list = "eth0"
+	ice_ignore_list = "vmnet"
+	#ignore_unreachable_ice_server = true
+}
+
+
+plugins: {
+	#disable = "libjanus_echotest.so,libjanus_recordplay.so"
+}
+
+transports: {
+	#disable = "libjanus_rabbitmq.so"
+}
+
+loggers: {
+	#disable = "libjanus_jsonlog.so"
+}
+
+events: {
+	#broadcast = true
+	#combine_media_stats = true
+	#disable = "libjanus_sampleevh.so"
+	#stats_period = 5
+}
