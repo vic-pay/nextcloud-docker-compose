@@ -1,129 +1,5 @@
 services:
 
-  # NGINX - reverse proxy with ssl
-  nextcloud-nginx:
-    image: nginx:alpine
-    container_name: nextcloud-nginx
-    hostname:       nextcloud-nginx
-    volumes:
-      - type: bind
-        source: ./config/nginx.conf
-        target:  /etc/nginx/conf.d/default.conf
-        read_only: true
-
-      - type: volume
-        source: nextcloud-app-volume
-        target: /var/www/html
-        read_only: true
-      
-      - type: bind
-        source: /etc/localtime
-        target: /etc/localtime
-        read_only: true
-
-      - type: bind
-        source: /etc/timezone
-        target: /etc/timezone
-        read_only: true
-
-      - type: bind
-        source: ./ssl
-        target:  /etc/nginx/ssl
-        read_only: true
-
-    network_mode: host
-    depends_on: ['nextcloud-app']
-    restart: unless-stopped
-
-  # NEXTCLOUD - app
-  nextcloud-app:
-    image: nextcloud:fpm-alpine
-    container_name: nextcloud-app
-    hostname:       nextcloud-app
-    environment:
-      NEXTCLOUD_TRUSTED_DOMAINS: localhost payva-u.yooteam.ru
-      NEXTCLOUD_ADMIN_USER:      admin
-      NEXTCLOUD_ADMIN_PASSWORD: $NEXTCLOUD_ADMIN_PASSWORD
-      POSTGRES_HOST:             localhost
-      POSTGRES_DB:              $POSTGRES_DB
-      POSTGRES_USER:            $POSTGRES_USER
-      POSTGRES_PASSWORD:        $POSTGRES_PASSWORD
-      REDIS_HOST:                localhost
-    volumes:
-      - type: volume
-        source: nextcloud-app-volume
-        target: /var/www/html
-        read_only: false
-
-      - type: bind
-        source: /etc/localtime
-        target: /etc/localtime
-        read_only: true
-
-      - type: bind
-        source: /etc/timezone
-        target: /etc/timezone
-        read_only: true
-
-    network_mode: host
-    depends_on: ['nextcloud-postgres', 'nextcloud-redis']
-    restart: unless-stopped
-
-  # POSTGRES - db
-  nextcloud-postgres:
-    image: postgres:alpine
-    container_name: nextcloud-postgres
-    hostname:       nextcloud-postgres
-    environment:
-      POSTGRES_DB:       $POSTGRES_DB
-      POSTGRES_USER:     $POSTGRES_USER
-      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
-    volumes:
-      - type: volume
-        source: nextcloud-postgres-volume
-        target: /var/lib/postgresql/data
-        read_only: false
-
-      - type: bind
-        source: /etc/localtime
-        target: /etc/localtime
-        read_only: true
-
-      - type: bind
-        source: /etc/timezone
-        target: /etc/timezone
-        read_only: true
-
-      - type: bind
-        source: ./ssl
-        target:  /var/lib/postgresql/ssl
-        read_only: true
-
-      - type: bind
-        source: ./config/postgres
-        target:  /docker-entrypoint-initdb.d/
-        read_only: true
-        
-    network_mode: host
-    restart: unless-stopped
-
-  # REDIS - cache
-  nextcloud-redis:
-    image: redis:alpine
-    container_name: nextcloud-redis
-    hostname:       nextcloud-redis
-    network_mode: host
-    restart: unless-stopped
-
-  # ------------------------------------------------------------
-  # Nats
-  nextcloud-nats:
-    image: nats
-    container_name: nextcloud-nats
-    hostname:       nextcloud-nats
-    network_mode: host
-    restart: unless-stopped
-
   # Janus
   # https://hub.docker.com/r/sucwangsr/janus-webrtc-gateway-docker
   nextcloud-janus:
@@ -131,12 +7,10 @@ services:
     container_name: nextcloud-janus
     hostname:       nextcloud-janus
     command: ["/usr/local/bin/janus", "-F", "/usr/local/etc/janus"]
-    volumes:
-      - type: bind
-        source: ./config/janus.jcfg
-        target:  /usr/local/etc/janus/janus.jcfg
-        read_only: true
-    network_mode: host
+    configs:
+      - source: nextcloud-janus
+        target: /usr/local/etc/janus/janus.jcfg
+    networks: ['nextcloud']
     restart: unless-stopped
 
   # Turn
@@ -145,12 +19,13 @@ services:
     image: coturn/coturn:4.7.0-alpine
     container_name: nextcloud-turn
     hostname:       nextcloud-turn
-    volumes:
-      - type: bind
-        source: ./config/turnserver.conf
-        target:  /etc/coturn/turnserver.conf
-        read_only: true
-    network_mode: host
+    configs:
+      - source: nextcloud-turn
+        target: /etc/coturn/turnserver.conf
+    networks: ['nextcloud']
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
     restart: unless-stopped
 
   # Signal server
@@ -160,36 +35,176 @@ services:
     container_name: nextcloud-signaling
     hostname:       nextcloud-signaling
     environment:
-      HTTP_LISTEN: 0.0.0.0:8080
+      HTTPS_LISTEN: 0.0.0.0:8443
+      HTTPS_CERTIFICATE: /etc/ssl/signaling/crt/server.crt
+      HTTPS_KEY:         /etc/ssl/signaling/key/server.key
+
       HASH_KEY:  $TOKEN
       BLOCK_KEY: $TOKEN
       INTERNAL_SHARED_SECRET_KEY: $TOKEN
       
-      BACKENDS: "2"
-      #BACKEND_1_URL: http://localhost
-      #BACKEND_1_SHARED_SECRET: $TOKEN
-      BACKEND_2_URL: http://payva-u.yooteam.ru:80
-      BACKEND_2_SHARED_SECRET: $TOKEN
+      BACKENDS: "1"
+      BACKEND_1_URL: https://nextcloud-app:443
+      BACKEND_1_SHARED_SECRET: $TOKEN
       
       USE_JANUS: 1
-      JANUS_URL: ws://localhost:8188
+      JANUS_URL: ws://nextcloud-janus:8188
       
       TURN_API_KEY: $TOKEN
       TURN_SECRET:  $TOKEN
-      TURN_SERVERS: localhost:3478
+      TURN_SERVERS: nextcloud-turn:3478
 
-    network_mode: host
+    volumes:
+      - type: bind
+        source: ./ssl
+        target:  /etc/ssl/signaling
+        read_only: true
+
+    networks: ['nextcloud']
+    ports:    ['8443:8443']
+    depends_on: ['nextcloud-janus', 'nextcloud-turn']
     restart: unless-stopped
 
+configs:
+  nextcloud-janus:
+    content: |
+      general: {
+        configs_folder = "@confdir@"
+        #plugins_folder = "@plugindir@"
+        #transports_folder = "@transportdir@"
+        #events_folder = "@eventdir@"
+        #loggers_folder = "@loggerdir@"
+        #log_to_stdout = false
+        #log_to_file = "/path/to/janus.log"
+        #log_rotate_sig = "SIGUSR1"
+        debug_level = 4
+        #debug_timestamps = true
+        #debug_colors = false
+        #debug_locks = true
+        #log_prefix = "[janus] "
+        #daemonize = true
+        #pid_file = "/path/to/janus.pid"
+        #api_secret = "janusrocks"
+        #token_auth = true
+        #token_auth_secret = "janus"
+        admin_secret = "janusoverlord"
+        #interface = "1.2.3.4"
+        #server_name = "MyJanusInstance"
+        #session_timeout = 60
+        #candidates_timeout = 45
+        #reclaim_session_timeout = 0
+        #recordings_tmp_ext = "tmp"
+        #event_loops = 8
+        #allow_loop_indication = true
+        #task_pool_size = 100
+        #opaqueid_in_api = true
+        #hide_dependencies = true
+        #exit_on_dl_error = false
+        #no_webrtc_encryption = true
+        protected_folders = [
+          "/bin",
+          "/boot",
+          "/dev",
+          "/etc",
+          "/initrd",
+          "/lib",
+          "/lib32",
+          "/lib64",
+          "/proc",
+          "/sbin",
+          "/sys",
+          "/usr",
+          "/var",
+          "/opt/janus/bin",
+          "/opt/janus/etc",
+          "/opt/janus/include",
+          "/opt/janus/lib",
+          "/opt/janus/lib32",
+          "/opt/janus/lib64",
+          "/opt/janus/sbin"
+        ]
+      }
 
-volumes:
-  nextcloud-app-volume:
-    name: nextcloud-app-volume
-  nextcloud-postgres-volume:
-    name: nextcloud-postgres-volume
+      certificates: {
+        #cert_pem = "/path/to/certificate.pem"
+        #cert_key = "/path/to/key.pem"
+        #cert_pwd = "secretpassphrase"
+        #dtls_accept_selfsigned = false
+        #dtls_ciphers = "your-desired-openssl-ciphers"
+        #rsa_private_key = false
+      }
 
+      media: {
+        #ipv6 = true
+        #ipv6_linklocal = true
+        #min_nack_queue = 500
+        #rtp_port_range = "20000-40000"
+        #dtls_mtu = 1200
+        #no_media_timer = 1
+        #slowlink_threshold = 4
+        #twcc_period = 100
+        #dtls_timeout = 500
+        #nack_optimizations = true
+        #dscp = 46
+      }
 
-networks:
-  nextcloud:
-    name:   nextcloud
-    driver: bridge
+      nat: {
+        #stun_server = "stun.voip.eutelia.it"
+        #stun_port = 3478
+        #nice_debug = "nice_debug option is NOT SUPPORTED ANYMORE! Please set NICE_DEBUG and G_MESSAGES_DEBUG env vars when starting Janus"
+        full_trickle = true # changed from default
+        #ice_nomination = "regular"
+        #ice_consent_freshness = true
+        #ice_keepalive_conncheck = true
+        #ice_lite = true
+        #ice_tcp = true
+        #hangup_on_failed = true
+        #ignore_mdns = true
+        #nat_1_1_mapping = "1.2.3.4"
+        #keep_private_host = true
+        #turn_server = "myturnserver.com"
+        #turn_port = 3478
+        #turn_type = "udp"
+        #turn_user = "myuser"
+        #turn_pwd = "mypassword"
+        #turn_rest_api = "http://yourbackend.com/path/to/api"
+        turn_rest_api_key = "${TOKEN}" # changed from default
+        #turn_rest_api_method = "GET"
+        #turn_rest_api_timeout = 10
+        #allow_force_relay = true
+        #ice_enforce_list = "eth0"
+        ice_ignore_list = "vmnet"
+        #ignore_unreachable_ice_server = true
+      }
+
+      plugins: {
+        #disable = "libjanus_echotest.so,libjanus_recordplay.so"
+      }
+
+      transports: {
+        #disable = "libjanus_rabbitmq.so"
+      }
+
+      loggers: {
+        #disable = "libjanus_jsonlog.so"
+      }
+
+      events: {
+        #broadcast = true
+        #combine_media_stats = true
+        #disable = "libjanus_sampleevh.so"
+        #stats_period = 5
+      }
+
+  nextcloud-turn:
+    content: |
+      listening-port=3478
+      fingerprint
+      use-auth-secret
+      static-auth-secret=${TOKEN}
+      realm=nextcloud-signaling
+      total-quota=100
+      bps-capacity=0
+      stale-nonce
+      no-multicast-peers
+  

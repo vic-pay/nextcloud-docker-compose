@@ -10,18 +10,23 @@ This repository contains docker-compose sample for Nextcloud and includes:
 
 ## How to use?
 
-1) Make .env file with sensitive variables. Example:
+1) Gen Token
 
-        NEXTCLOUD_ADMIN_PASSWORD=12345678
-        POSTGRES_USER=nextcloud
-        POSTGRES_PASSWORD=12345678
-        POSTGRES_DB=nextcloud
+        openssl rand -hex 16
 
-2) Run ansible playbook for self-signed certificate generation:
+2) Make .env file with sensitive variables. Example:
+
+        TOKEN=*************53686 # token from step one
+        NEXTCLOUD_ADMIN_PASSWORD: a12345678
+        POSTGRES_DB:              nextcloud
+        POSTGRES_USER:            nextcloud
+        POSTGRES_PASSWORD:        a12345678
+
+3) Run ansible playbook for self-signed certificate generation:
 
         cd nextcloud-docker-compose
-        ansible-playbook playbook-gen-crt.yml --ask-become-pass
+        ansible-playbook playbook-gen-crt.yml
 
-3) Deploy containers:
+4) Deploy containers:
 
         docker-compose up -d
