@@ -1,5 +1,42 @@
 services:
 
+  # Signal server
+  # https://hub.docker.com/r/strukturag/nextcloud-spreed-signaling
+  nextcloud-signaling:
+    image: strukturag/nextcloud-spreed-signaling
+    container_name: nextcloud-signaling
+    hostname:       nextcloud-signaling
+    environment:
+      HTTPS_LISTEN: 0.0.0.0:8443
+      HTTPS_CERTIFICATE: /etc/ssl/signaling/crt/server.crt
+      HTTPS_KEY:         /etc/ssl/signaling/key/server.key
+
+      HASH_KEY:  $TOKEN
+      BLOCK_KEY: $TOKEN
+      INTERNAL_SHARED_SECRET_KEY: $TOKEN
+      
+      BACKENDS: "1"
+      BACKEND_1_URL: https://192.168.0.106:443
+      BACKEND_1_SHARED_SECRET: $TOKEN
+
+      USE_JANUS: 1
+      JANUS_URL: ws://nextcloud-janus:8188
+      
+      TURN_API_KEY: $TOKEN
+      TURN_SECRET:  $TOKEN
+      TURN_SERVERS: nextcloud-turn:3478
+
+    volumes:
+      - type: bind
+        source: ./ssl
+        target:  /etc/ssl/signaling
+        read_only: true
+
+    networks: ['nextcloud']
+    ports:    ['8443:8443']
+    depends_on: ['nextcloud-janus', 'nextcloud-turn']
+    restart: unless-stopped
+
   # Janus
   # https://hub.docker.com/r/sucwangsr/janus-webrtc-gateway-docker
   nextcloud-janus:
@@ -26,43 +63,6 @@ services:
     ports:
       - "3478:3478/udp"
       - "3478:3478/tcp"
-    restart: unless-stopped
-
-  # Signal server
-  # https://hub.docker.com/r/strukturag/nextcloud-spreed-signaling
-  nextcloud-signaling:
-    image: strukturag/nextcloud-spreed-signaling
-    container_name: nextcloud-signaling
-    hostname:       nextcloud-signaling
-    environment:
-      HTTPS_LISTEN: 0.0.0.0:8443
-      HTTPS_CERTIFICATE: /etc/ssl/signaling/crt/server.crt
-      HTTPS_KEY:         /etc/ssl/signaling/key/server.key
-
-      HASH_KEY:  $TOKEN
-      BLOCK_KEY: $TOKEN
-      INTERNAL_SHARED_SECRET_KEY: $TOKEN
-      
-      BACKENDS: "1"
-      BACKEND_1_URL: https://nextcloud-app:443
-      BACKEND_1_SHARED_SECRET: $TOKEN
-      
-      USE_JANUS: 1
-      JANUS_URL: ws://nextcloud-janus:8188
-      
-      TURN_API_KEY: $TOKEN
-      TURN_SECRET:  $TOKEN
-      TURN_SERVERS: nextcloud-turn:3478
-
-    volumes:
-      - type: bind
-        source: ./ssl
-        target:  /etc/ssl/signaling
-        read_only: true
-
-    networks: ['nextcloud']
-    ports:    ['8443:8443']
-    depends_on: ['nextcloud-janus', 'nextcloud-turn']
     restart: unless-stopped
 
 configs:
@@ -149,8 +149,8 @@ configs:
       }
 
       nat: {
-        #stun_server = "stun.voip.eutelia.it"
-        #stun_port = 3478
+        stun_server = "nextcloud-turn"
+        stun_port = 3478
         #nice_debug = "nice_debug option is NOT SUPPORTED ANYMORE! Please set NICE_DEBUG and G_MESSAGES_DEBUG env vars when starting Janus"
         full_trickle = true # changed from default
         #ice_nomination = "regular"
@@ -162,9 +162,9 @@ configs:
         #ignore_mdns = true
         #nat_1_1_mapping = "1.2.3.4"
         #keep_private_host = true
-        #turn_server = "myturnserver.com"
-        #turn_port = 3478
-        #turn_type = "udp"
+        turn_server = "nextcloud-turn"
+        turn_port = 3478
+        turn_type = "udp"
         #turn_user = "myuser"
         #turn_pwd = "mypassword"
         #turn_rest_api = "http://yourbackend.com/path/to/api"
