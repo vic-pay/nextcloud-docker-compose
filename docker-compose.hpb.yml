@@ -20,11 +20,13 @@ services:
       BACKEND_1_SHARED_SECRET: $TOKEN
 
       USE_JANUS: 1
-      JANUS_URL: ws://nextcloud-janus:8188
+      JANUS_URL: ws://192.168.0.106:8188
       
       TURN_API_KEY: $TOKEN
       TURN_SECRET:  $TOKEN
-      TURN_SERVERS: nextcloud-turn:3478
+      TURN_SERVERS: 192.168.0.106:3478
+
+      SKIP_VERIFY: true
 
     volumes:
       - type: bind
@@ -32,8 +34,12 @@ services:
         target:  /etc/ssl/signaling
         read_only: true
 
-    networks: ['nextcloud']
+    networks: 
+      nextcloud:
+        ipv4_address: 172.19.0.6
     ports:    ['8443:8443']
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on: ['nextcloud-janus', 'nextcloud-turn']
     restart: unless-stopped
 
@@ -47,7 +53,10 @@ services:
     configs:
       - source: nextcloud-janus
         target: /usr/local/etc/janus/janus.jcfg
-    networks: ['nextcloud']
+    network_mode: host
+    #networks: 
+    #  nextcloud:
+    #    ipv4_address: 172.19.0.7
     restart: unless-stopped
 
   # Turn
@@ -59,7 +68,9 @@ services:
     configs:
       - source: nextcloud-turn
         target: /etc/coturn/turnserver.conf
-    networks: ['nextcloud']
+    networks: 
+      nextcloud:
+        ipv4_address: 172.19.0.8
     ports:
       - "3478:3478/udp"
       - "3478:3478/tcp"
@@ -149,8 +160,8 @@ configs:
       }
 
       nat: {
-        stun_server = "nextcloud-turn"
-        stun_port = 3478
+        #stun_server = "nextcloud-turn"
+        #stun_port = 3478
         #nice_debug = "nice_debug option is NOT SUPPORTED ANYMORE! Please set NICE_DEBUG and G_MESSAGES_DEBUG env vars when starting Janus"
         full_trickle = true # changed from default
         #ice_nomination = "regular"
@@ -160,15 +171,15 @@ configs:
         #ice_tcp = true
         #hangup_on_failed = true
         #ignore_mdns = true
-        #nat_1_1_mapping = "1.2.3.4"
+        #nat_1_1_mapping = "192.168.0.106"
         #keep_private_host = true
-        turn_server = "nextcloud-turn"
-        turn_port = 3478
-        turn_type = "udp"
+        #turn_server = "nextcloud-turn"
+        #turn_port = 3478
+        #turn_type = "udp"
         #turn_user = "myuser"
         #turn_pwd = "mypassword"
         #turn_rest_api = "http://yourbackend.com/path/to/api"
-        turn_rest_api_key = "${TOKEN}" # changed from default
+        #turn_rest_api_key = "${TOKEN}" # changed from default
         #turn_rest_api_method = "GET"
         #turn_rest_api_timeout = 10
         #allow_force_relay = true
@@ -207,4 +218,6 @@ configs:
       bps-capacity=0
       stale-nonce
       no-multicast-peers
+      external-ip=192.168.0.106
+      #relay-ip=192.168.0.106
   

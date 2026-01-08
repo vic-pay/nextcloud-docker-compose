@@ -1,0 +1,44 @@
+services:  
+  nextcloud-aio-talk:
+    image: ghcr.io/nextcloud-releases/aio-talk:latest
+    container_name: nextcloud-aio-talk
+    hostname:       nextcloud-aio-talk
+    user: "1000"
+    init: true
+    read_only: true
+    healthcheck:
+      start_period: 0s
+      test: /healthcheck.sh
+      interval: 30s
+      timeout: 30s
+      start_interval: 5s
+      retries: 3
+    environment:
+      - TZ=${TIMEZONE}
+      - NC_DOMAIN=192.168.0.106
+      - TALK_HOST=nextcloud-aio-talk
+      - TALK_PORT=3478
+      - TURN_SECRET=${TOKEN}
+      - SIGNALING_SECRET=${TOKEN}
+      - INTERNAL_SECRET=${TOKEN}
+      - SKIP_CERT_VERIFY=true
+      - TALK_MAX_STREAM_BITRATE=4096
+      - TALK_MAX_SCREEN_BITRATE=4096
+    tmpfs:
+      - /var/log/supervisord
+      - /var/run/supervisord
+      - /opt/eturnal/run
+      - /conf
+      - /tmp
+    cap_drop:
+      - NET_RAW
+    networks: 
+      nextcloud:
+        ipv4_address: 172.19.0.6
+    ports:
+      - 3478:3478/tcp
+      - 3478:3478/udp
+      - 8081:8081
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

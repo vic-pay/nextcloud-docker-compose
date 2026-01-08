@@ -30,7 +30,9 @@ services:
         target:  /etc/nginx/ssl
         read_only: true
 
-    networks:   ['nextcloud']
+    networks: 
+      nextcloud:
+        ipv4_address: 172.19.0.2
     ports:      ['80:80', '443:443']
     depends_on: ['nextcloud']
     restart: unless-stopped
@@ -65,7 +67,11 @@ services:
         target: /etc/timezone
         read_only: true
 
-    networks:   ['nextcloud']
+    networks: 
+      nextcloud:
+        ipv4_address: 172.19.0.3
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on: ['postgres', 'redis']
     restart: unless-stopped
 
@@ -104,7 +110,9 @@ services:
       #  target:  /docker-entrypoint-initdb.d/
       #  read_only: true
         
-    networks: ['nextcloud']
+    networks: 
+      nextcloud:
+        ipv4_address: 172.19.0.4
     restart: unless-stopped
 
   # REDIS - cache
@@ -112,7 +120,9 @@ services:
     image: redis:alpine
     container_name: nextcloud-redis
     hostname:       nextcloud-redis
-    networks: ['nextcloud']
+    networks: 
+      nextcloud:
+        ipv4_address: 172.19.0.5
     restart: unless-stopped
 
 
